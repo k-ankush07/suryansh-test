@@ -54,12 +54,59 @@ export async function loader({ request }) {
     }
 }
 
+// delete product 
+export async function action({ request }) {
+    // authenticate the shopify admin request 
+    const { admin } = await authenticate.admin(request)
+    const formData = await request.formData();
+    const id = formData.get("id")
+    const delresponse = await admin.graphql(
+        `#graphql
+            mutation DeleteProduct($input: ProductDeleteInput !){
+                productDelete(input : $input){
+                    deletedProductId
+                         userErrors {
+                            field
+                            message
+                        }
+                    
+                }
+            }`,
+        {
+            variables: {
+                input: {
+                    id
+                }
+            }
+        }
+    )
+    const result = await delresponse.json();
+    const deletion = result.data?.productDelete;
+    // show error if any 
+    if (result.errors || !deletion || deletion.userErrors.length > 0) {
+        return json(
+            {
+                error:
+                    deletion?.userErrors?.map((e) => e.message).join(", ") ||
+                    result.errors?.map((e) => e.message).join(", ") ||
+                    "Failed to delete product",
+            },
+            { status: 400 }
+        );
+    }
+    return {
+        deletePrroduct: deletion.deletedproductId
+    }
+}
+
 
 function Products() {
     // to get the data inside the products we use 
+
     //useLoaderData
     const { products } = useLoaderData();
-  
+    const fetcher = useFetcher();
+
     return (
 
         <div
@@ -71,7 +118,7 @@ function Products() {
                 color: "#1f2937",
             }}
         >
-           
+
             <h1
                 style={{
                     textAlign: "center",
@@ -139,6 +186,30 @@ function Products() {
                             >
                                 {product.status}
                             </span>
+                        </div>
+
+                        {/* delete button */}
+                        <div>
+                            <button
+                                onClick={() => {
+                                    if (window.confirm("Are you sure you want to delete this product?")) {
+                                        fetcher.submit(
+                                            { id: product.id },
+                                            { method: "post" }
+                                        );
+                                    }
+                                }}
+                                style={{
+                                    backgroundColor: "red",
+                                    color: "white",
+                                    padding: "8px 16px",
+                                    border: "none",
+                                    borderRadius: "5px",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                Delete Product
+                            </button>
                         </div>
 
                         {/* Product Images */}

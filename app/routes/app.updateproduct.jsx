@@ -39,6 +39,88 @@ export async function loader({ request }) {
         products: result.data.products.nodes
     }
 }
+// NOW step - 2 update the data 
+
+export async function action({ request }) {
+  const { admin } = await authenticate.admin(request);
+
+  const formData = await request.formData();
+
+  const id = formData.get("id");
+  const title = String(formData.get("title") || "").trim();
+  const vendor = String(formData.get("vendor") || "").trim();
+  const productType = String(formData.get("productType") || "").trim();
+  const status = formData.get("status");
+
+  // Check what the form submitted
+  console.log("Submitted product data:", {
+    id,
+    title,
+    vendor,
+    productType,
+    status,
+  });
+
+  if (!id || !title) {
+    return { error: "Product ID and title are required" };
+  }
+
+  const response = await admin.graphql(
+    `#graphql
+      mutation UpdateProduct($product: ProductUpdateInput!) {
+        productUpdate(product: $product) {
+          product {
+            id
+            title
+            vendor
+            productType
+            status
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        product: {
+          id: String(id),
+          title,
+          vendor,
+          productType,
+          status,
+        },
+      },
+    }
+  );
+
+  const result = await response.json();
+
+
+  if (result.errors?.length) {
+    return {
+      error: result.errors.map((e) => e.message).join(", "),
+    };
+  }
+
+  const updateResult = result.data?.productUpdate;
+
+  if (updateResult.userErrors.length > 0) {
+    return {
+      error: updateResult.userErrors
+        .map((e) => e.message)
+        .join(", "),
+    };
+  }
+
+  return {
+    success: true,
+    product: updateResult.product,
+  };
+}
+
 function Updateproduct() {
     const { products } = useLoaderData();
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -59,7 +141,7 @@ function Updateproduct() {
         fontSize: "13px",
         cursor: "pointer",
     };
-     const labelStyle = {
+    const labelStyle = {
         display: "block",
         fontSize: "13px",
         fontWeight: "500",
@@ -78,6 +160,7 @@ function Updateproduct() {
         color: "#171717",
     };
     // use to get the form data after submit 
+    // Featcher get the response result avlible in fetcher
     const fetcher = useFetcher()
     return (
         <div>Updateproduct page
