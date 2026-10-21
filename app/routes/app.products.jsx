@@ -54,79 +54,12 @@ export async function loader({ request }) {
     }
 }
 
-// 2 Action to create products // title , id description ,image 
-export async function action({ request }) {
-    const { admin } = await authenticate.admin(request)
-    const formData = await request.formData()
-    const title = String(formData.get("title") || "").trim(); // if title is null then "" so its remain string
-    const description = String(formData.get("description") || "").trim();
-    if (!title) {
-        return { error: "Product title is required." };
-    }
-    // change description format 
-    const descriptionHtml = description
-        ? `<p>${description.replace(/[&<>"]/g, (char) => ({
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-        }[char]))}</p>`
-        : "";
-    // create add graph query  // use muatation when we want to crate and use query when get
-    const response = await admin.graphql(
-        `#graphql 
-    mutation CreateProduct($product: ProductCreateInput!){
-            productCreate(product: $product){
-                product {
-                    id
-                    title
-                    status
-                }
-                    userErrors{
-                        field
-                        message
-                    }
-            }
-    } `,
-        {
-            variables: {
-                product: {
-                    title,
-                    descriptionHtml,
-                    status: "DRAFT"
-                }
-            }
-        }
-    )
-    //get response in js format 
-    const result = await response.json()
-    // if any error 
-    if (result.errors) {
-        return {
-            error: result.errors
-                .map((error) => error.message)
-                .join(", "),
-        };
-    }
-    const created = result.data.productCreate
-    //check user error
-    if (created.userErrors.length > 0) {
-        return {
-            error: created.userErrors
-                .map((error) => error.message)
-                .join(", "),
-        };
-    }
-    return { product: created.product }
-}
+
 function Products() {
     // to get the data inside the products we use 
     //useLoaderData
     const { products } = useLoaderData();
-    const fetcher = useFetcher();
-    const isSubmitting = fetcher.state !== "idle";
-    const product = fetcher.data?.product;
-    const error = fetcher.data?.error;
+  
     return (
 
         <div
@@ -138,47 +71,7 @@ function Products() {
                 color: "#1f2937",
             }}
         >
-            <h1>create shopify Product</h1>
-            {/* featcher form */}
-            <fetcher.Form method='post'>
-                <div>
-                    <label htmlFor="title">Product title</label>
-                    <input
-                        id="title"
-                        name="title"
-                        type="text"
-                        placeholder="Example: Blue T-shirt"
-                        required
-                    />
-                </div>
-
-                <div>
-                    <label htmlFor="description">
-                        Product description
-                    </label>
-                    <textarea
-                        id="description"
-                        name="description"
-                        placeholder="Describe your product"
-                    />
-                </div>
-
-                <button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating..." : "Create Product"}
-                </button>
-            </fetcher.Form>
-            {/* Show errors */}
-            {error && <p role="alert">Error: {error}</p>}
-
-            {/* Show newly created product */}
-            {product && (
-                <section>
-                    <h2>Product created successfully!</h2>
-                    <p>Title: {product.title}</p>
-                    <p>Status: {product.status}</p>
-                    <p>ID: {product.id}</p>
-                </section>
-            )}
+           
             <h1
                 style={{
                     textAlign: "center",
